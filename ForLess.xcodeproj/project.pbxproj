@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C5C20CD30927E9D00DE47AE /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 0C5C20CC30927E9C00DE47AE /* Secrets.xcconfig */; };
 		0CDC71D8308CFDAA00435D7E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0CDC71D7308CFDAA00435D7E /* FirebaseAuth */; };
 		0CDC71DA308CFDC100435D7E /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 0CDC71D9308CFDC100435D7E /* FirebaseFirestore */; };
 		0CDC71DC308CFDD500435D7E /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0CDC71DB308CFDD500435D7E /* FirebaseCore */; };
@@ -30,14 +31,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0C5C20CC30927E9C00DE47AE /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		0CDC71A7308CEC0C00435D7E /* ForLess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ForLess.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0CDC71B4308CEC0F00435D7E /* ForLessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ForLessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0CDC71BE308CEC0F00435D7E /* ForLessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ForLessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F8CA158930921A92000B6A64 /* Exceptions for "ForLess" folder in "ForLess" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0CDC71A6308CEC0C00435D7E /* ForLess */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0CDC71A9308CEC0C00435D7E /* ForLess */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F8CA158930921A92000B6A64 /* Exceptions for "ForLess" folder in "ForLess" target */,
+			);
 			path = ForLess;
 			sourceTree = "<group>";
 		};
@@ -89,6 +104,7 @@
 				0CDC71C1308CEC0F00435D7E /* ForLessUITests */,
 				0CDC71D6308CFDAA00435D7E /* Frameworks */,
 				0CDC71A8308CEC0C00435D7E /* Products */,
+				0C5C20CC30927E9C00DE47AE /* Secrets.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -235,6 +251,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C5C20CD30927E9D00DE47AE /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -357,6 +374,7 @@
 		};
 		0CDC71C7308CEC0F00435D7E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C5C20CC30927E9C00DE47AE /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -413,6 +431,7 @@
 		};
 		0CDC71C9308CEC0F00435D7E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0C5C20CC30927E9C00DE47AE /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -420,11 +439,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForLess/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -451,11 +473,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForLess/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
