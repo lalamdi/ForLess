@@ -91,7 +91,11 @@ final class DataStore: ObservableObject {
            .document(orderId)
            .updateData(["status": status.rawValue])
    }
-
+    /// Lowers the "left" count of a deal after an order.
+    func reduceQuantity(dealId: String, by amount: Int) {
+        db.collection(Collection.deals).document(dealId)
+            .updateData(["quantityLeft": FieldValue.increment(Int64(-amount))])
+    }
    // MARK: - Users
 
    /// Saves a user under their Firebase Auth user ID.
