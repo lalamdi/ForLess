@@ -84,6 +84,7 @@ enum OrderStatus: String, Codable {
     case preparing
     case ready
     case pickedUp
+    case cancelled
 }
 
 enum PaymentMethod: String, Codable {
