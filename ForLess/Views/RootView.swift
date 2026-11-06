@@ -21,7 +21,20 @@ struct RootView: View {
             if showSplash {
                 SplashView()
             } else if auth.isSignedIn {
-                ContentView()   // home screen (deals list for now)
+                // Wait for the profile so we know if the user is a customer or a business
+                if let profile = auth.profile {
+                    if profile.role == .business {
+                        BusinessOrdersView()   // business side (orders)
+                    } else {
+                        ContentView()          // home screen (deals list for now)
+                    }
+                } else {
+                    // Profile is still loading. Sign out is there in case it never loads.
+                    VStack(spacing: 16) {
+                        ProgressView()
+                        Button("Sign out") { auth.signOut() }
+                    }
+                }
             } else {
                 SignInView()
             }
