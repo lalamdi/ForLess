@@ -24,9 +24,9 @@ struct RootView: View {
                 // Wait for the profile so we know if the user is a customer or a business
                 if let profile = auth.profile {
                     if profile.role == .business {
-                        BusinessOrdersView()   // business side (orders)
+                        BusinessTabView()       // business side (orders and add deal)
                     } else {
-                        ContentView()          // home screen (deals list for now)
+                        CustomerTabView()          // home screen (deals list for now)
                     }
                 } else {
                     // Profile is still loading. Sign out is there in case it never loads.

@@ -54,4 +54,10 @@ extension DataStore {
         deal.id = document.documentID
         return deal
     }
+    
+    /// Saves a new deal in the "deals" collection and returns its ID.
+        func createDeal(_ deal: Deal) throws -> String {
+            let reference = try Firestore.firestore().collection("deals").addDocument(from: deal)
+            return reference.documentID
+        }
 }
