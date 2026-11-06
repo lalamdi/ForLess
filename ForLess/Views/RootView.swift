@@ -26,7 +26,7 @@ struct RootView: View {
                     if profile.role == .business {
                         BusinessTabView()       // business side (orders and add deal)
                     } else {
-                        ContentView()          // home screen (deals list for now)
+                        CustomerTabView()          // home screen (deals list for now)
                     }
                 } else {
                     // Profile is still loading. Sign out is there in case it never loads.
