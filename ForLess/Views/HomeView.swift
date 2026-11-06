@@ -6,7 +6,6 @@
 //
 
 
-
 //  Customer home screen
 //  Top: "Pickup near" chip (opens the location pop-up) and the profile circle.
 //  Then the greeting, a search box, the Restaurants / Groceries switch,
@@ -24,9 +23,10 @@ struct HomeView: View {
     @State private var searchText = ""
     @State private var mode: StoreType = .restaurant   // Restaurants or Groceries
  
-    @State private var chosenPlace: LocationOption?    // place confirmed in the pop-up
+    @Binding var chosenPlace: LocationOption?        // place confirmed in the pop-up
     @State private var showLocationSheet = false
     @State private var didAskLocation = false          // pop-up opens by itself only once
+    @State private var showAddAddress = false          // Add address screen (opens on top of the pop-up)
     @State private var showSignOutAlert = false
  
     // MARK: - Data for the screen
@@ -131,9 +131,13 @@ struct HomeView: View {
                         showLocationSheet = false
                     },
                     onAddAddress: {
-                        // The Add address screen (Figma 21) is added in the next step
+                        showAddAddress = true
                     }
                 )
+                // Opens from the pop-up, so it shows on top of it
+                .sheet(isPresented: $showAddAddress) {
+                    AddAddressView()
+                }
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.appBackground)
@@ -428,3 +432,4 @@ struct HomeView: View {
         }
     }
 }
+ 

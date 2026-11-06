@@ -6,40 +6,31 @@
 //
 
 
+
 //  Bottom tab bar of the customer side: Home, Orders and Profile.
-//  Orders and Profile are placeholders until those screens are built.
+//  The Profile screen can switch to the Orders tab (Order history row).
 //
- 
+
 import SwiftUI
- 
+
 struct CustomerTabView: View {
-    @State private var selection = 0   // 0 Home, 1 Orders, 2 Profile
- 
+    @State private var selection = 0                  // 0 Home, 1 Orders, 2 Profile
+    @State private var chosenPlace: LocationOption?   // pickup place chosen on Home
+
     var body: some View {
         TabView(selection: $selection) {
-            HomeView()
+            HomeView(chosenPlace: $chosenPlace)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(0)
- 
-            placeholder("Orders")
+
+            OrdersView()
                 .tabItem { Label("Orders", systemImage: "doc.text") }
                 .tag(1)
- 
-            placeholder("Profile")
+
+            ProfileView(onSeeOrders: { selection = 1 })
                 .tabItem { Label("Profile", systemImage: "person") }
                 .tag(2)
         }
-        .tint(Color.brand)   // orange selected tab
-    }
- 
-    /// Temporary screen for tabs that are not built yet.
-    private func placeholder(_ title: String) -> some View {
-        NavigationStack {
-            Text("\(title) is coming soon")
-                .foregroundStyle(Color.muted)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.appBackground)
-                .navigationTitle(title)
-        }
+        .tint(Color.brand)
     }
 }
