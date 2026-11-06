@@ -12,7 +12,6 @@
 //
  
 
-
 import SwiftUI
  
 struct ProfileView: View {
@@ -67,11 +66,6 @@ struct ProfileView: View {
     private var savedLocationsText: String {
         let labels = (profile?.savedLocations ?? []).map { $0.label }
         return labels.isEmpty ? "None yet" : labels.joined(separator: ", ")
-    }
- 
-    private var foodPreferencesText: String {
-        let items = profile?.foodPreferences ?? []
-        return items.isEmpty ? "Not set" : items.joined(separator: ", ")
     }
  
     // MARK: - Screen
@@ -185,22 +179,31 @@ struct ProfileView: View {
             .buttonStyle(.plain)
             Divider()
  
-            // These rows have no screen yet
- 
-            rowContent(icon: "creditcard", title: "Payment methods",
-                       subtitle: "Apple Pay, Pay at pickup", showsChevron: false)
+            NavigationLink {
+                PaymentMethodsView()
+            } label: {
+                rowContent(icon: "creditcard", title: "Payment methods",
+                           subtitle: "Apple Pay, Pay at pickup", showsChevron: true)
+            }
+            .buttonStyle(.plain)
             Divider()
  
-            rowContent(icon: "heart", title: "Food preferences",
-                       subtitle: foodPreferencesText, showsChevron: false)
+            NavigationLink {
+                NotificationsView()
+            } label: {
+                rowContent(icon: "bell", title: "Notifications",
+                           subtitle: "Deals near you", showsChevron: true)
+            }
+            .buttonStyle(.plain)
             Divider()
  
-            rowContent(icon: "bell", title: "Notifications",
-                       subtitle: "Deals near you", showsChevron: false)
-            Divider()
- 
-            rowContent(icon: "questionmark.circle", title: "Help & support",
-                       subtitle: nil, showsChevron: false)
+            NavigationLink {
+                HelpSupportView()
+            } label: {
+                rowContent(icon: "questionmark.circle", title: "Help & support",
+                           subtitle: nil, showsChevron: true)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
