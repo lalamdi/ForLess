@@ -32,5 +32,7 @@ struct CustomerTabView: View {
                 .tag(2)
         }
         .tint(Color.brand)
+        // Lets the thank-you screen's "Back to home" switch to the Home tab
+        .environment(\.switchTab, { selection = $0 })
     }
 }

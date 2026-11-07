@@ -10,7 +10,7 @@
 //  Top: "Pickup near" chip (opens the location pop-up) and the profile circle.
 //  Then the greeting, a search box, the Restaurants / Groceries switch,
 //  "Buy again" from past orders, and the deals list.
-//  Tapping a deal opens Checkout.
+//  Tapping a store opens its deals page; tapping a deal opens Deal details.
 //
  
 import SwiftUI
@@ -80,6 +80,15 @@ struct HomeView: View {
         return Array(result.prefix(2))
     }
  
+    /// Stores of the selected type that have at least one deal left.
+    private var modeStores: [Store] {
+        let storeIdsWithDeals = Set(modeDeals.map { $0.storeId })
+        return data.stores.filter { store in
+            guard let id = store.id else { return false }
+            return store.type == mode && storeIdsWithDeals.contains(id)
+        }
+    }
+
     private func storeName(for deal: Deal) -> String {
         data.stores.first { $0.id == deal.storeId }?.name ?? ""
     }
@@ -104,6 +113,11 @@ struct HomeView: View {
                     // Buy again is hidden while searching
                     if searchText.isEmpty && !buyAgainDeals.isEmpty {
                         buyAgainSection
+                    }
+
+                    // Stores near you (opens the store deals page, Figma 07 / 14)
+                    if searchText.isEmpty && !modeStores.isEmpty {
+                        storesSection
                     }
  
                     dealsSection
@@ -280,7 +294,10 @@ struct HomeView: View {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(buyAgainDeals) { deal in
                     NavigationLink {
-                        CheckoutView(deal: deal, storeName: storeName(for: deal))
+                        DealDetailView(
+                            deal: deal,
+                            storeName: storeName(for: deal)
+                        )
                     } label: {
                         buyAgainCard(deal)
                     }
@@ -321,6 +338,66 @@ struct HomeView: View {
         .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
     }
  
+    // MARK: - Stores near you
+
+    private var storesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(mode == .restaurant ? "Restaurants near you" : "Stores near you")
+                .font(.system(size: 19, weight: .heavy))
+                .foregroundStyle(Color.ink)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(modeStores) { store in
+                        NavigationLink {
+                            StoreDealsView(store: store)
+                        } label: {
+                            storeCard(store)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func storeCard(_ store: Store) -> some View {
+        let dealCount = modeDeals.filter { $0.storeId == store.id }.count
+
+        return VStack(alignment: .leading, spacing: 6) {
+            Group {
+                if let urlString = store.photoURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Color.brandLight
+                    }
+                } else {
+                    Color.brandLight
+                        .overlay(
+                            Image(systemName: store.type == .grocery ? "basket" : "fork.knife")
+                                .font(.system(size: 22))
+                                .foregroundStyle(Color.brand)
+                        )
+                }
+            }
+            .frame(width: 150, height: 90)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            Text(store.name)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+
+            Text("\(dealCount) \(dealCount == 1 ? "deal" : "deals") left")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.brandText)
+        }
+        .frame(width: 150, alignment: .leading)
+        .padding(10)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+    }
+
     // MARK: - Deals list
  
     private var dealsSection: some View {
@@ -343,12 +420,17 @@ struct HomeView: View {
             }
  
             ForEach(searchedDeals) { deal in
-                NavigationLink {
-                    CheckoutView(deal: deal, storeName: storeName(for: deal))
-                } label: {
-                    dealRow(deal)
+                if let store = data.stores.first(where: { $0.id == deal.storeId }) {
+                    NavigationLink {
+                        DealDetailView(
+                            deal: deal,
+                            storeName: store.name
+                        )
+                    } label: {
+                        dealRow(deal)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -432,4 +514,3 @@ struct HomeView: View {
         }
     }
 }
- 
