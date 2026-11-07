@@ -41,13 +41,33 @@ final class GooglePlacesViewModel: ObservableObject {
                 longitude: longitude
             )
 
-            restaurants = service.convertToStores(
+            var loadedStores = service.convertToStores(
                 places,
                 excluding: existingStores
             )
+
+            // Retrieve a photo for each restaurant when available.
+            for index in loadedStores.indices {
+                guard let place = places.first(where: {
+                    $0.id == loadedStores[index].googlePlaceId
+                }) else {
+                    continue
+                }
+
+                do {
+                    let photoURL = try await service.fetchPhotoURL(for: place)
+                    loadedStores[index].photoURL = photoURL?.absoluteString
+                } catch {
+                    // Keep the restaurant even if its photo cannot be loaded.
+                    loadedStores[index].photoURL = nil
+                }
+            }
+
+            restaurants = loadedStores
 
         } catch {
             errorMessage = "Could not load restaurants: \(error.localizedDescription)"
         }
     }
 }
+
