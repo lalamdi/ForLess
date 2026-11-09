@@ -269,7 +269,7 @@ struct StoreDealsView: View {
             let allStoreDeals = try await data.fetchDeals(storeId: storeID)
 
             // Only show deals from this store that are still available.
-            storeDeals = allStoreDeals.filter { $0.quantityLeft > 0 }
+            storeDeals = allStoreDeals.filter { $0.quantityLeft > 0 && !$0.isExpired }
                 .sorted { $0.dealPrice < $1.dealPrice }
 
             errorMessage = nil

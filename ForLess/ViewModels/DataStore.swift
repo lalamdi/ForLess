@@ -137,6 +137,76 @@ final class DataStore: ObservableObject {
         }
     }
 
+    // MARK: - Expired sample deals
+
+    /// Sample grocery deals that already expired get a new expiry date
+    /// (this month and next). It runs once on this phone.
+    func fixSampleExpiryDates() async {
+        if UserDefaults.standard.bool(forKey: "didFixSampleExpiry") { return }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // deal ID and how many days from today
+        let newExpiry = [
+            "mixed-fruit-box": 11,
+            "whole-milk": 21,
+            "greek-yogurt": 31
+        ]
+
+        for (id, days) in newExpiry {
+            let ref = db.collection(Collection.deals).document(id)
+            guard let snapshot = try? await ref.getDocument(), snapshot.exists else { continue }
+
+            // Only deals that are already expired
+            let current = (snapshot.data()?["expiryDate"] as? Timestamp)?.dateValue()
+            guard let current, current < Date() else { continue }
+
+            let day = calendar.date(byAdding: .day, value: days, to: today)!
+            let newDate = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: day)!
+            try? await ref.updateData(["expiryDate": Timestamp(date: newDate)])
+        }
+
+        UserDefaults.standard.set(true, forKey: "didFixSampleExpiry")
+    }
+
+    // MARK: - Sample photos
+
+    /// Adds a photo link to the sample stores and deals that do not have one.
+    /// It only fills an empty photoURL, so nothing else is changed.
+    func addSamplePhotos() async {
+        let storePhotos = [
+            "zaatar-w-zeit": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800",
+            "coffee-bean": "https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=800",
+            "harvest": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800",
+            "green-basket": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800"
+        ]
+        let dealPhotos = [
+            "chicken-caesar-wrap": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=800",
+            "breaded-chicken": "https://images.unsplash.com/photo-1562967914-608f82629710?w=800",
+            "labneh-wrap": "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800",
+            "iced-latte-muffin": "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800",
+            "veggie-flatbread": "https://images.unsplash.com/photo-1579751626657-72bc17010498?w=800",
+            "mixed-fruit-box": "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800",
+            "greek-yogurt": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800",
+            "whole-milk": "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=800"
+        ]
+
+        await fillPhotos(storePhotos, in: Collection.stores)
+        await fillPhotos(dealPhotos, in: Collection.deals)
+    }
+
+    private func fillPhotos(_ photos: [String: String], in collection: String) async {
+        for (id, url) in photos {
+            let ref = db.collection(collection).document(id)
+            guard let snapshot = try? await ref.getDocument(), snapshot.exists else { continue }
+            let current = snapshot.data()?["photoURL"] as? String ?? ""
+            if current.isEmpty {
+                try? await ref.updateData(["photoURL": url])
+            }
+        }
+    }
+
     // MARK: - Sample data
 
     /// Writes sample stores, deals, users and orders.
@@ -314,7 +384,7 @@ final class DataStore: ObservableObject {
                 quantityLeft: 4,
                 pickupStart: time(16),
                 pickupEnd: time(20),
-                expiryDate: time(23, 59, daysFromToday: 2)
+                expiryDate: time(23, 59, daysFromToday: 11)
             )),
 
             ("greek-yogurt", Deal(
@@ -329,7 +399,7 @@ final class DataStore: ObservableObject {
                 quantityLeft: 6,
                 pickupStart: time(16),
                 pickupEnd: time(20),
-                expiryDate: time(23, 59, daysFromToday: 7)
+                expiryDate: time(23, 59, daysFromToday: 31)
             )),
 
             ("whole-milk", Deal(
@@ -344,7 +414,7 @@ final class DataStore: ObservableObject {
                 quantityLeft: 5,
                 pickupStart: time(16),
                 pickupEnd: time(20),
-                expiryDate: time(23, 59, daysFromToday: 3)
+                expiryDate: time(23, 59, daysFromToday: 21)
             ))
         ]
 
@@ -481,5 +551,13 @@ final class DataStore: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+extension Deal {
+    /// True when a grocery deal is past its expiry date.
+    var isExpired: Bool {
+        guard let expiryDate else { return false }
+        return expiryDate < Date()
     }
 }

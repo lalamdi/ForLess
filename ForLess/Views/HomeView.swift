@@ -50,10 +50,10 @@ struct HomeView: View {
         }
     }
  
-    /// Deals of the selected type (restaurants or groceries) that are not sold out.
+    /// Deals of the selected type (restaurants or groceries) that are not sold out or expired.
     private var modeDeals: [Deal] {
         let storeIds = Set(data.stores.filter { $0.type == mode }.compactMap { $0.id })
-        return data.deals.filter { storeIds.contains($0.storeId) && $0.quantityLeft > 0 }
+        return data.deals.filter { storeIds.contains($0.storeId) && $0.quantityLeft > 0 && !$0.isExpired }
     }
  
     /// The deals list after the search box is applied.
@@ -167,6 +167,8 @@ struct HomeView: View {
  
     /// Loads the stores, the deals and this customer's orders.
     private func reload() async {
+        await data.addSamplePhotos()   // temporary: fills the sample photos
+        await data.fixSampleExpiryDates()   // temporary: new dates for expired samples
         await data.loadAll()
         if let uid = auth.uid {
             orders = (try? await data.fetchOrders(customerId: uid)) ?? []

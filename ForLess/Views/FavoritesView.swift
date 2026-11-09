@@ -27,7 +27,7 @@ struct FavoritesView: View {
     private var favoriteDeals: [Deal] {
         data.deals.filter {
             guard let id = $0.id else { return false }
-            return savedDealIDs.contains(id)
+            return savedDealIDs.contains(id) && !$0.isExpired
         }
     }
 
