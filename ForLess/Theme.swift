@@ -157,3 +157,15 @@ private struct SteamShape: Shape {
         return path
     }
 }
+
+// MARK: - Keyboard
+
+extension View {
+    /// Tapping outside a text field closes the keyboard.
+    func hideKeyboardOnTap() -> some View {
+        onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                            to: nil, from: nil, for: nil)
+        }
+    }
+}

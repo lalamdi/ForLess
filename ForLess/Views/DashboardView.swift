@@ -16,11 +16,10 @@
 import SwiftUI
  
 struct DashboardView: View {
-    @EnvironmentObject private var auth: AuthManager   // used for the user's ID and Sign out
+    @EnvironmentObject private var auth: AuthManager   // used for the user's ID
     @StateObject private var model = BusinessOrdersViewModel()
     @StateObject private var data = DataStore()
     @State private var deals: [Deal] = []              // deals of this store
-    @State private var showSignOutAlert = false        // confirm pop up for Sign out
  
     var onAddDeal: () -> Void      // opens the Add deal tab
     var onSeeOrders: () -> Void    // opens the Orders tab
@@ -79,15 +78,9 @@ struct DashboardView: View {
                 .padding(.bottom, 24)
             }
             .background(Color.appBackground)
-            .toolbar(.hidden, for: .navigationBar)   // sign out is in the header instead
-            .alert("Sign out?", isPresented: $showSignOutAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Sign out", role: .destructive) { auth.signOut() }
-            } message: {
-                Text("You will need to sign in again to manage your orders.")
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable { await reload() }   // pull down to refresh
-            .task { await reload() }
+            .onAppear { Task { await reload() } }   // also when coming back to this tab
         }
     }
  
@@ -117,19 +110,7 @@ struct DashboardView: View {
                 }
             }
             Spacer()
- 
-            // Small square sign out button (icon only)
-            Button {
-                showSignOutAlert = true   // ask first, do not sign out right away
-            } label: {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line))
-            }
-            .accessibilityLabel("Sign out")
+
         }
     }
  

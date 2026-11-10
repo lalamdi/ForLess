@@ -48,6 +48,7 @@ struct Store: Codable, Identifiable {
     var rating: Double?
     var photoURL: String?
     var ownerId: String?
+    var phone: String?          // contact number shown to customers (not the sign-in number)
 }
 
 // MARK: - Deal

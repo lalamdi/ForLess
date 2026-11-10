@@ -60,7 +60,7 @@ final class BusinessOrdersViewModel: ObservableObject {
                     customers[customerId] = user
                 }
             }
-            for dealId in Set(fetched.compactMap { $0.items.first?.dealId }) where deals[dealId] == nil {
+            for dealId in Set(fetched.flatMap { $0.items.map { $0.dealId } }) where deals[dealId] == nil {
                 if let deal = try? await data.fetchDeal(dealId: dealId) {
                     deals[dealId] = deal
                 }

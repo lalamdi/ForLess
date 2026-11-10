@@ -131,6 +131,7 @@ struct CheckoutView: View {
             }
             .padding(24)
         }
+        .hideKeyboardOnTap()
         .background(Color.appBackground)
         .navigationTitle("Checkout")
         .navigationBarTitleDisplayMode(.inline)

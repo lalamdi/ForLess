@@ -126,6 +126,7 @@ struct HomeView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+            .hideKeyboardOnTap()
             .background(Color.appBackground)
             .toolbar(.hidden, for: .navigationBar)
             .task {

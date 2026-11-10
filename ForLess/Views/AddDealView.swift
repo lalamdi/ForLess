@@ -9,11 +9,13 @@
 //  "Add a surplus deal" screen
 //  The business picks Meal or Grocery item, fills in the name, prices,
 //  quantity and pickup time, and taps "Publish deal".
+//  A photo of the item can be added (optional). It is uploaded when the deal is published.
 //  The deal is saved in the "deals" collection for the business user's store.
 //
  
 
 import SwiftUI
+import PhotosUI
  
 struct AddDealView: View {
     @EnvironmentObject private var auth: AuthManager   // used for the user's ID
@@ -31,6 +33,14 @@ struct AddDealView: View {
     @State private var expiry = Calendar.current.date(byAdding: .day, value: 2, to: Date()) ?? Date()
     @State private var errorMessage: String?
     @State private var showPublished = false
+
+    // Photo of the item (optional)
+    @State private var photo: UIImage?
+    @State private var pickedItem: PhotosPickerItem?
+    @State private var showPhotoMenu = false
+    @State private var showLibrary = false
+    @State private var showCamera = false
+    @State private var isPublishing = false
  
     // MARK: - Example text (changes with Meal / Grocery item)
  
@@ -89,6 +99,8 @@ struct AddDealView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.ink)
                     kindPicker
+
+                    photoSection
  
                     LabeledField(label: "Item name") {
                         TextField(namePlaceholder, text: $name)
@@ -154,14 +166,21 @@ struct AddDealView: View {
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)   // drag down to close the keyboard
+            .hideKeyboardOnTap()                       // or tap outside
+            // The error message goes away as soon as the form is changed
+            .onChange(of: name + details + originalPrice + dealPrice) { _, _ in errorMessage = nil }
+            .onChange(of: pickupStart) { _, _ in errorMessage = nil }
+            .onChange(of: pickupEnd) { _, _ in errorMessage = nil }
             .background(Color.appBackground)
             .navigationBarTitleDisplayMode(.inline)
             // Publish button stays at the bottom of the screen
             .safeAreaInset(edge: .bottom) {
-                Button("Publish deal") { publish() }
+                Button(isPublishing ? "Publishing..." : "Publish deal") {
+                    Task { await publish() }
+                }
                     .buttonStyle(PrimaryButtonStyle())
-                    .disabled(store == nil)
-                    .opacity(store == nil ? 0.5 : 1)
+                    .disabled(store == nil || isPublishing)
+                    .opacity(store == nil || isPublishing ? 0.5 : 1)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
                     .background(Color.appBackground)
@@ -171,12 +190,110 @@ struct AddDealView: View {
             } message: {
                 Text("Customers can now see it in the deals list.")
             }
+            // Take a photo / Choose from your photos
+            .confirmationDialog("Add a photo", isPresented: $showPhotoMenu) {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Take a photo") { showCamera = true }
+                }
+                Button("Choose from your photos") { showLibrary = true }
+                Button("Cancel", role: .cancel) {}
+            }
+            .photosPicker(isPresented: $showLibrary, selection: $pickedItem, matching: .images)
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPicker { picture in photo = picture }
+                    .ignoresSafeArea()
+            }
+            // Load the picture chosen from the library
+            .onChange(of: pickedItem) { _, item in
+                Task {
+                    if let data = try? await item?.loadTransferable(type: Data.self),
+                       let picture = UIImage(data: data) {
+                        photo = picture
+                    }
+                }
+            }
             .task { await loadStore() }
         }
     }
  
     // MARK: - Pieces of the screen
  
+    /// Photo of the item: an empty box to add one, or the picture with Change and Remove.
+    private var photoSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Text("Photo of the item")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                Text("(optional)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.muted)
+            }
+
+            if let photo {
+                Image(uiImage: photo)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 190)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                HStack(spacing: 10) {
+                    photoButton("Change photo", color: Color.ink) {
+                        showPhotoMenu = true
+                    }
+                    photoButton("Remove", color: Color(hex: 0xC0392B)) {
+                        self.photo = nil
+                        pickedItem = nil
+                    }
+                }
+            } else {
+                Button {
+                    showPhotoMenu = true
+                } label: {
+                    VStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.brand)
+                            .frame(width: 48, height: 48)
+                            .overlay(
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(Color.white)
+                            )
+                        Text("Add a photo")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.brandDark)
+                        Text("Customers choose faster with a picture")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.brandDark)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 150)
+                    .background(Color.brandLight, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color.brand.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [6]))
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// White button under the picture (Change photo / Remove).
+    private func photoButton(_ title: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(color)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
+        }
+        .buttonStyle(.plain)
+    }
+
     /// Meal / Grocery item switch.
     private var kindPicker: some View {
         HStack(spacing: 4) {
@@ -259,7 +376,7 @@ struct AddDealView: View {
     }
  
     /// Checks the form, then saves the deal in Firestore.
-    private func publish() {
+    private func publish() async {
         errorMessage = nil
  
         guard let storeId = store?.id else {
@@ -292,12 +409,25 @@ struct AddDealView: View {
             ? Calendar.current.date(bySettingHour: 23, minute: 59, second: 0, of: expiry)
             : nil
  
+        // Upload the photo first (if there is one)
+        isPublishing = true
+        defer { isPublishing = false }
+        var photoURL: String?
+        if let photo {
+            do {
+                photoURL = try await PhotoStorage.upload(photo)
+            } catch {
+                errorMessage = "Could not upload the photo. Please try again."
+                return
+            }
+        }
+
         let newDeal = Deal(
             id: nil,
             storeId: storeId,
             title: trimmedName,
             description: details.trimmingCharacters(in: .whitespacesAndNewlines),
-            photoURL: nil,
+            photoURL: photoURL,
             kind: kind,
             originalPrice: originalValue,
             dealPrice: dealValue,
@@ -323,6 +453,8 @@ struct AddDealView: View {
         originalPrice = ""
         dealPrice = ""
         quantity = 1
+        photo = nil
+        pickedItem = nil
     }
  
     // MARK: - Dates
@@ -339,5 +471,3 @@ struct AddDealView: View {
         return calendar.date(bySettingHour: parts.hour ?? 0, minute: parts.minute ?? 0, second: 0, of: Date()) ?? time
     }
 }
-
- 

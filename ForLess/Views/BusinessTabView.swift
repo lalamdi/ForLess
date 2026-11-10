@@ -7,15 +7,15 @@
 
 
 //  Bottom tab bar of the business side:
-//  Orders (BusinessOrdersView) and Add deal (AddDealView).
-//  The Dashboard tab from the Figma will be added later.
+//  Dashboard, Orders (BusinessOrdersView), Add deal (AddDealView)
+//  and Profile (BusinessProfileView).
 //
  
 
 import SwiftUI
  
 struct BusinessTabView: View {
-    @State private var selection = 0   // 0 = Dashboard, 1 = Orders, 2 = Add deal
+    @State private var selection = 0   // 0 = Dashboard, 1 = Orders, 2 = Add deal, 3 = Profile
  
     var body: some View {
         TabView(selection: $selection) {
@@ -31,8 +31,11 @@ struct BusinessTabView: View {
             AddDealView()
                 .tabItem { Label("Add deal", systemImage: "plus") }
                 .tag(2)
+
+            BusinessProfileView()
+                .tabItem { Label("Profile", systemImage: "person") }
+                .tag(3)
         }
         .tint(Color.brand)   // orange selected tab
     }
 }
- 

@@ -14,7 +14,7 @@
 import SwiftUI
  
 struct BusinessOrdersView: View {
-    @EnvironmentObject private var auth: AuthManager          // used for the user's ID and Sign out
+    @EnvironmentObject private var auth: AuthManager          // used for the user's ID
     @StateObject private var model = BusinessOrdersViewModel()
     @State private var filter: OrderFilter = .all
  
@@ -79,11 +79,6 @@ struct BusinessOrdersView: View {
             }
             .background(Color.appBackground)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Sign out") { auth.signOut() }
-                }
-            }
             .refreshable { await reload() }   // pull down to refresh
             .task { await reload() }
         }

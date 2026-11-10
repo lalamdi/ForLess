@@ -102,6 +102,7 @@ struct SignInView: View {
                 .background(Color.white)
             }
             .background(Color.white)
+            .hideKeyboardOnTap()
             .navigationDestination(isPresented: $showVerify) { VerifyCodeView() }
             .onChange(of: role) { auth.errorMessage = nil }   // clear old errors when switching tabs
         }

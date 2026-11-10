@@ -19,6 +19,7 @@ struct ForLessApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .preferredColorScheme(.light)   // the design is light only, so typed text stays dark
         }
     }
 }

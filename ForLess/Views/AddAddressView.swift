@@ -7,7 +7,7 @@
 
 
 
-//  Customer "Add new address" screen 
+//  Customer "Add new address" screen
 //  Pick a spot on the map, choose Home, Work or Other, and save it.
 //  It is also used to edit or delete a saved address (editing is not nil).
 //
@@ -117,6 +117,8 @@ struct AddAddressView: View {
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)
+            .hideKeyboardOnTap()
+            .onChange(of: addressText) { _, _ in errorMessage = nil }
             .background(Color.appBackground)
             .navigationTitle(editing == nil ? "Add new address" : "Edit address")
             .navigationBarTitleDisplayMode(.inline)
