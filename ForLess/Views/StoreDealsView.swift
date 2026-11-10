@@ -41,6 +41,9 @@ struct StoreDealsView: View {
         .background(Color.appBackground)
         .navigationTitle(store.name)
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            CartBar()
+        }
         .task {
             await loadDeals()
         }
@@ -174,7 +177,7 @@ struct StoreDealsView: View {
             } else {
                 ForEach(storeDeals) { deal in
                     NavigationLink {
-                        DealDetailView(deal: deal, storeName: store.name)
+                        DealDetailView(deal: deal, storeName: store.name, fromStore: true)
                     } label: {
                         dealCard(deal)
                     }

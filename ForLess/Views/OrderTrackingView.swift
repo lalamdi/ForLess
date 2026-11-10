@@ -17,6 +17,13 @@ struct OrderTrackingView: View {
     let storeName: String
     let storeAddress: String
 
+    // Used right after paying: shows "Order placed!" and a Back to home button
+    var isNewOrder = false
+    var savedAmount: Double = 0
+    var onBackToHome: (() -> Void)? = nil
+
+    @State private var address = ""                // store address (loaded if it was not given)
+    @State private var pickupText: String?         // "Today, 10 Nov · 7:00 PM – 9:00 PM"
     @State private var currentStatus: OrderStatus
     @State private var listener: ListenerRegistration?
     @State private var showThankYou = false
@@ -28,11 +35,18 @@ struct OrderTrackingView: View {
     init(
         order: Order,
         storeName: String,
-        storeAddress: String
+        storeAddress: String,
+        isNewOrder: Bool = false,
+        savedAmount: Double = 0,
+        onBackToHome: (() -> Void)? = nil
     ) {
         self.order = order
         self.storeName = storeName
         self.storeAddress = storeAddress
+        self.isNewOrder = isNewOrder
+        self.savedAmount = savedAmount
+        self.onBackToHome = onBackToHome
+        _address = State(initialValue: storeAddress)
         _currentStatus = State(initialValue: order.status)
     }
 
@@ -68,14 +82,21 @@ struct OrderTrackingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
 
-                Text("Track your order")
-                    .font(.system(size: 27, weight: .heavy))
-                    .foregroundStyle(Color.ink)
+                if isNewOrder {
+                    successHeader
+                } else {
+                    Text("Track your order")
+                        .font(.system(size: 27, weight: .heavy))
+                        .foregroundStyle(Color.ink)
+                }
 
                 if currentStatus == .cancelled {
                     cancelledMessage
                 } else {
                     pickupCodeCard
+                    if isNewOrder && savedAmount > 0 {
+                        savingsCard
+                    }
                     timelineSection
                     storeCard
                     orderSummary
@@ -86,6 +107,25 @@ struct OrderTrackingView: View {
         .background(Color.appBackground)
         .navigationTitle("Order tracking")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(isNewOrder ? .hidden : .visible, for: .navigationBar)
+        .task {
+            await loadPickupAndAddress()
+        }
+        // Back to home stays at the bottom of the screen after paying
+        .safeAreaInset(edge: .bottom) {
+            if isNewOrder {
+                Button {
+                    onBackToHome?()
+                } label: {
+                    Text("Back to home")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.appBackground)
+            }
+        }
         .onAppear {
             startListening()
         }
@@ -119,6 +159,54 @@ struct OrderTrackingView: View {
                 }
             )
         }
+    }
+
+    // MARK: - After paying
+
+    /// Green check, "Order placed!" and the order number.
+    private var successHeader: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandLight)
+                    .frame(width: 84, height: 84)
+
+                Circle()
+                    .fill(Color.brand)
+                    .frame(width: 58, height: 58)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            Text("Order placed!")
+                .font(.system(size: 28, weight: .heavy))
+                .foregroundStyle(Color.ink)
+
+            Text("Order #\((order.id ?? "").prefix(6).uppercased()) · \(storeName)")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.muted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// "You saved QAR 11 and rescued 1 item from waste."
+    private var savingsCard: some View {
+        let count = order.items.reduce(0) { $0 + $1.quantity }
+
+        return HStack(spacing: 10) {
+            Image(systemName: "leaf.fill")
+                .foregroundStyle(Color.brand)
+
+            Text("You saved \(qar(savedAmount)) and rescued \(count) \(count == 1 ? "item" : "items") from waste.")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.brandDark)
+
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(Color.brandLight, in: RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - Pickup Code
@@ -237,11 +325,34 @@ struct OrderTrackingView: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Color.ink)
 
+            // Pickup date and time
+            if let pickupText {
+                HStack(spacing: 12) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.brand)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pickup")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.muted)
+
+                        Text(pickupText)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.brandDark)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(Color.brandLight, in: RoundedRectangle(cornerRadius: 12))
+            }
+
             Label(storeName, systemImage: "storefront")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.ink)
 
-            Label(storeAddress, systemImage: "mappin.and.ellipse")
+            Label(address.isEmpty ? "Address unavailable" : address, systemImage: "mappin.and.ellipse")
                 .font(.system(size: 13))
                 .foregroundStyle(Color.muted)
 
@@ -340,6 +451,41 @@ struct OrderTrackingView: View {
             Color.white,
             in: RoundedRectangle(cornerRadius: 18)
         )
+    }
+
+    // MARK: - Pickup time and store address
+
+    /// Finds the pickup time from the deals in this order (and the store address if it is missing).
+    private func loadPickupAndAddress() async {
+        let db = Firestore.firestore()
+
+        if address.isEmpty || address == "Address unavailable" {
+            let store = try? await db.collection("stores").document(order.storeId).getDocument()
+            if let found = store?.data()?["address"] as? String {
+                address = found
+            }
+        }
+
+        var deals: [Deal] = []
+        for item in order.items {
+            if let snapshot = try? await db.collection("deals").document(item.dealId).getDocument(),
+               let deal = try? snapshot.data(as: Deal.self) {
+                deals.append(deal)
+            }
+        }
+        guard let start = deals.map({ $0.pickupStart }).max(),
+              let end = deals.map({ $0.pickupEnd }).min() else { return }
+
+        // Several items: use the time that works for all of them
+        if start >= end {
+            pickupText = "Check each deal's pickup time"
+            return
+        }
+        let day = Calendar.current.isDateInToday(start)
+            ? "Today, " + start.formatted(.dateTime.day().month(.abbreviated))
+            : start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        let times = "\(start.formatted(date: .omitted, time: .shortened)) – \(end.formatted(date: .omitted, time: .shortened))"
+        pickupText = "\(day) · \(times)"
     }
 
     // MARK: - Live Firestore Updates

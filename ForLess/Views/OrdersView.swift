@@ -21,6 +21,9 @@ struct OrdersView: View {
     @State private var filter: OrderFilter = .all
     @State private var isLoading = true
 
+    // True when opened from Profile > Order history (it has a back button)
+    var isPushed = false
+
     // MARK: - Filters
 
     enum OrderFilter: String, CaseIterable {
@@ -98,12 +101,22 @@ struct OrdersView: View {
     // MARK: - Screen
 
     var body: some View {
-        NavigationStack {
+        if isPushed {
+            screen
+        } else {
+            NavigationStack { screen }
+        }
+    }
+
+    private var screen: some View {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("My Orders")
-                        .font(.system(size: 28, weight: .heavy))
-                        .foregroundStyle(Color.ink)
+                    if !isPushed {
+                        Text("My Orders")
+                            .font(.system(size: 28, weight: .heavy))
+                            .foregroundStyle(Color.ink)
+                    }
 
                     summaryBanner
                     filterChips
@@ -142,7 +155,9 @@ struct OrdersView: View {
                 .padding(.bottom, 24)
             }
             .background(Color.appBackground)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(isPushed ? .visible : .hidden, for: .navigationBar)
+            .navigationTitle(isPushed ? "Order history" : "")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 Task {
                     await reload()

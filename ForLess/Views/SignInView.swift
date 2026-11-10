@@ -5,20 +5,20 @@
 //  Created by lama alemadi on 04/11/2026.
 //
 
-//  Sign-in screen (name + mobile number, Customer or Business)
-//  and the Verify code screen (6-digit SMS code).
+//  Log in screen (username + password, Customer or Business)
+//  and the Verify code screen (6-digit SMS code, first time only).
+//  New users make their account on the Create account screen.
 //
 
 import SwiftUI
 
-// MARK: - Sign in screen
+// MARK: - Log in screen (first screen)
 
 struct SignInView: View {
     @EnvironmentObject private var auth: AuthManager
     @State private var role: UserRole = .customer   // Customer or Business tab
-    @State private var name = ""
-    @State private var mobile = ""
-    @State private var showVerify = false           // opens the Verify code screen
+    @State private var username = ""
+    @State private var password = ""
 
     var body: some View {
         NavigationStack {
@@ -34,40 +34,30 @@ struct SignInView: View {
 
                     // Heading changes for customers and businesses
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(role == .customer ? "Good food, less waste" : "Sell surplus, waste less")
+                        Text("Welcome back")
                             .font(.system(size: 30, weight: .heavy))
                             .foregroundStyle(Color.ink)
                         Text(role == .customer
-                             ? "Sign in to grab discounted meals and groceries near you before they go to waste."
-                             : "For restaurants and grocery stores. Post surplus food and manage pickup orders.")
+                             ? "Log in to grab discounted meals and groceries near you before they go to waste."
+                             : "Log in to post surplus food and manage pickup orders.")
                             .font(.system(size: 15))
                             .foregroundStyle(Color.muted)
                     }
 
                     RolePicker(role: $role)
 
-                    // Name field (store name for businesses)
-                    LabeledField(label: role == .customer ? "Full name" : "Store name") {
-                        TextField(role == .customer ? "Enter your name" : "e.g. Za'atar W Zeit", text: $name)
-                            .textContentType(role == .customer ? UITextContentType.name : .organizationName)
+                    LabeledField(label: "Username") {
+                        TextField("Enter your username", text: $username)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
                     }
 
-                    // Mobile number field with the fixed Qatar code
-                    LabeledField(label: role == .customer ? "Mobile number" : "Business mobile number") {
-                        HStack(spacing: 12) {
-                            Text("+974").font(.system(size: 15, weight: .semibold))
-                            Rectangle().fill(Color.line).frame(width: 1, height: 20)
-                            TextField("5XXX XXXX", text: $mobile)
-                                .keyboardType(.numberPad)
-                                .textContentType(.telephoneNumber)
-                        }
+                    LabeledField(label: "Password") {
+                        PasswordField(placeholder: "Enter your password", text: $password)
                     }
 
-                    Text("We'll send a code by SMS to verify your number.")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.muted)
-
-                    // Error from AuthManager (e.g. wrong number format)
+                    // Error from AuthManager (e.g. wrong password)
                     if let error = auth.errorMessage {
                         Text(error)
                             .font(.system(size: 13, weight: .semibold))
@@ -77,25 +67,28 @@ struct SignInView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
             }
-            // Button stays at the bottom of the screen
+            // Buttons stay at the bottom of the screen
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 12) {
                     Button {
-                        Task {
-                            // Go to the Verify screen only if the SMS was sent
-                            if await auth.sendCode(name: name, mobile: mobile, role: role) {
-                                showVerify = true
-                            }
-                        }
+                        Task { await auth.logIn(username: username, password: password, role: role) }
                     } label: {
-                        if auth.isLoading { ProgressView().tint(.white) } else { Text("Send code") }
+                        if auth.isLoading { ProgressView().tint(.white) } else { Text("Log in") }
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(auth.isLoading)
 
-                    Text("By continuing you agree to our Terms & Privacy Policy.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.muted)
+                    // First time users make an account with their mobile number
+                    NavigationLink {
+                        CreateAccountView(startingRole: role)
+                    } label: {
+                        Text("New here? Create an account")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color.brandText)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.brand, lineWidth: 1.5))
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 8)
@@ -103,8 +96,40 @@ struct SignInView: View {
             }
             .background(Color.white)
             .hideKeyboardOnTap()
-            .navigationDestination(isPresented: $showVerify) { VerifyCodeView() }
             .onChange(of: role) { auth.errorMessage = nil }   // clear old errors when switching tabs
+            .onAppear { auth.errorMessage = nil }
+        }
+    }
+}
+
+// MARK: - Password box
+
+/// Password field with an eye button to show or hide the password.
+struct PasswordField: View {
+    let placeholder: String
+    @Binding var text: String
+    @State private var isShown = false
+
+    var body: some View {
+        HStack {
+            Group {
+                if isShown {
+                    TextField(placeholder, text: $text)
+                } else {
+                    SecureField(placeholder, text: $text)
+                }
+            }
+            .textContentType(.password)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+
+            Button {
+                isShown.toggle()
+            } label: {
+                Image(systemName: isShown ? "eye.slash" : "eye")
+                    .foregroundStyle(Color.muted)
+            }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -112,7 +137,7 @@ struct SignInView: View {
 // MARK: - Customer / Business switch
 
 /// Two-tab switch to choose a customer or business account.
-private struct RolePicker: View {
+struct RolePicker: View {
     @Binding var role: UserRole
 
     var body: some View {
@@ -212,7 +237,7 @@ struct VerifyCodeView: View {
             Button {
                 Task { await auth.verify(code: code) }
             } label: {
-                if auth.isLoading { ProgressView().tint(.white) } else { Text("Verify & continue") }
+                if auth.isLoading { ProgressView().tint(.white) } else { Text("Verify and create account") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(code.count < 6 || auth.isLoading)   // only active when 6 digits are typed

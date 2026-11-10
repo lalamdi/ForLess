@@ -17,6 +17,7 @@ import SwiftUI
  
 struct HomeView: View {
     @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var cart: CartStore
     @StateObject private var data = DataStore()
  
     @State private var orders: [Order] = []            // this customer's past orders
@@ -27,7 +28,6 @@ struct HomeView: View {
     @State private var showLocationSheet = false
     @State private var didAskLocation = false          // pop-up opens by itself only once
     @State private var showAddAddress = false          // Add address screen (opens on top of the pop-up)
-    @State private var showSignOutAlert = false
  
     // MARK: - Data for the screen
  
@@ -89,6 +89,13 @@ struct HomeView: View {
         }
     }
 
+    /// Stores of the selected type whose name matches the search.
+    private var searchedStores: [Store] {
+        let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty { return [] }
+        return data.stores.filter { $0.type == mode && $0.name.localizedCaseInsensitiveContains(text) }
+    }
+
     private func storeName(for deal: Deal) -> String {
         data.stores.first { $0.id == deal.storeId }?.name ?? ""
     }
@@ -120,6 +127,11 @@ struct HomeView: View {
                         storesSection
                     }
  
+                    // Matching stores show up first when searching
+                    if !searchedStores.isEmpty {
+                        searchedStoresSection
+                    }
+
                     dealsSection
                 }
                 .padding(.horizontal, 20)
@@ -128,6 +140,9 @@ struct HomeView: View {
             }
             .hideKeyboardOnTap()
             .background(Color.appBackground)
+            .safeAreaInset(edge: .bottom) {
+                CartBar()
+            }
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 // Open the location pop-up the first time only
@@ -157,13 +172,8 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.appBackground)
             }
-            .alert("Sign out?", isPresented: $showSignOutAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Sign out", role: .destructive) { auth.signOut() }
-            } message: {
-                Text("You will need to sign in again to order.")
-            }
         }
+        .id(cart.homeResetID)   // new value = back to the first Home screen
     }
  
     /// Loads the stores, the deals and this customer's orders.
@@ -205,20 +215,8 @@ struct HomeView: View {
  
             Spacer()
  
-            // Orange circle with the first letter of the name. Tap to sign out.
-            Button {
-                showSignOutAlert = true
-            } label: {
-                Circle()
-                    .fill(Color.brand)
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(firstName.prefix(1)).uppercased())
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Color.white)
-                    )
-            }
-            .accessibilityLabel("Account")
+            // Orange circle with the first letter of the name
+            AvatarView(name: firstName, photoURL: auth.profile?.photoURL, size: 44)
         }
     }
  
@@ -401,12 +399,76 @@ struct HomeView: View {
         .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
     }
 
+    // MARK: - Store results (when searching)
+
+    private var searchedStoresSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(mode == .restaurant ? "Restaurants" : "Stores")
+                .font(.system(size: 19, weight: .heavy))
+                .foregroundStyle(Color.ink)
+
+            ForEach(searchedStores) { store in
+                NavigationLink {
+                    StoreDealsView(store: store)
+                } label: {
+                    storeRow(store)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func storeRow(_ store: Store) -> some View {
+        let dealCount = modeDeals.filter { $0.storeId == store.id }.count
+
+        return HStack(spacing: 12) {
+            Group {
+                if let urlString = store.photoURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Color.brandLight
+                    }
+                } else {
+                    Color.brandLight
+                        .overlay(
+                            Image(systemName: store.type == .grocery ? "basket" : "fork.knife")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Color.brand)
+                        )
+                }
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(store.name)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+                Text(store.address)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.muted)
+                    .lineLimit(1)
+                Text("\(dealCount) \(dealCount == 1 ? "deal" : "deals") left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.brandText)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.muted)
+        }
+        .padding(10)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+    }
+
     // MARK: - Deals list
  
     private var dealsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(searchText.isEmpty ? "Deals near you" : "Results")
+                Text(searchText.isEmpty ? "Deals near you" : "Deals")
                     .font(.system(size: 19, weight: .heavy))
                     .foregroundStyle(Color.ink)
                 Text(mode == .restaurant ? "Surplus meals ready for pickup today"
@@ -415,7 +477,7 @@ struct HomeView: View {
                     .foregroundStyle(Color.muted)
             }
  
-            if searchedDeals.isEmpty {
+            if searchedDeals.isEmpty && !(searchText.isEmpty == false && !searchedStores.isEmpty) {
                 Text(searchText.isEmpty ? "No deals yet." : "No deals match your search.")
                     .font(.system(size: 14))
                     .foregroundStyle(Color.muted)

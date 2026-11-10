@@ -6,12 +6,20 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 struct DealDetailView: View {
     let deal: Deal
     let storeName: String
+    var fromStore = false          // true when opened from the store's own page
+
+    @EnvironmentObject private var cart: CartStore
+    @Environment(\.dismiss) private var dismiss
 
     @State private var quantity = 1
+    @State private var showNewCartAlert = false
+    @State private var openedStore: Store?          // the store page opened after adding
+    @State private var showStore = false
     @State private var showingExpiryDetails = false
 
     // Save favorite deal IDs on this device.
@@ -251,14 +259,10 @@ struct DealDetailView: View {
         .navigationTitle("Deal details")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            NavigationLink {
-                CheckoutView(
-                    deal: deal,
-                    storeName: storeName,
-                    initialQuantity: quantity
-                )
+            Button {
+                addToCart()
             } label: {
-                Text("Continue to checkout")
+                Text("Add to cart · \(qar(totalPrice))")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(PrimaryButtonStyle())
@@ -272,6 +276,56 @@ struct DealDetailView: View {
             ExpiryPopupView(deal: deal)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
+        }
+        // A cart can only hold items from one store
+        .alert("Start a new cart?", isPresented: $showNewCartAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Start new cart", role: .destructive) {
+                cart.clear()
+                cart.add(deal, storeName: storeName, quantity: quantity)
+                goToStore()
+            }
+        } message: {
+            Text("Your cart has items from \(cart.storeName). You can only order from one store at a time.")
+        }
+        // The store page of this deal (when it was not opened from there)
+        .navigationDestination(isPresented: $showStore) {
+            if let openedStore {
+                StoreDealsView(store: openedStore)
+            }
+        }
+    }
+
+    // MARK: - Cart
+
+    /// Puts the deal in the cart and goes to the store.
+    private func addToCart() {
+        if cart.isOtherStore(deal) {
+            showNewCartAlert = true
+        } else {
+            cart.add(deal, storeName: storeName, quantity: quantity)
+            goToStore()
+        }
+    }
+
+    /// Back to the store page. From Home or Favorites it opens the store of this deal.
+    private func goToStore() {
+        if fromStore {
+            dismiss()
+            return
+        }
+        Task {
+            let snapshot = try? await Firestore.firestore()
+                .collection("stores")
+                .document(deal.storeId)
+                .getDocument()
+            if var store = try? snapshot?.data(as: Store.self) {
+                store.id = deal.storeId
+                openedStore = store
+                showStore = true
+            } else {
+                dismiss()   // could not load the store, so just go back
+            }
         }
     }
 

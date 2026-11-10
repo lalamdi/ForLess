@@ -16,6 +16,7 @@ import SwiftUI
 struct CustomerTabView: View {
     @State private var selection = 0                  // 0 Home, 1 Orders, 2 Profile
     @State private var chosenPlace: LocationOption?   // pickup place chosen on Home
+    @StateObject private var cart = CartStore()       // the customer's cart
 
     var body: some View {
         TabView(selection: $selection) {
@@ -34,5 +35,6 @@ struct CustomerTabView: View {
         .tint(Color.brand)
         // Lets the thank-you screen's "Back to home" switch to the Home tab
         .environment(\.switchTab, { selection = $0 })
+        .environmentObject(cart)
     }
 }

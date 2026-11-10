@@ -129,14 +129,7 @@ struct ProfileView: View {
 
     private var userCard: some View {
         HStack(spacing: 14) {
-            Circle()
-                .fill(Color.brand)
-                .frame(width: 64, height: 64)
-                .overlay {
-                    Text(String((profile?.name ?? "").prefix(1)).uppercased())
-                        .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(Color.white)
-                }
+            AvatarView(name: profile?.name ?? "", photoURL: profile?.photoURL, size: 64)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(profile?.name ?? "")
@@ -149,6 +142,19 @@ struct ProfileView: View {
             }
 
             Spacer()
+
+            // Opens the Edit profile screen
+            NavigationLink {
+                EditProfileView()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.brandDark)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.brandLight, in: Capsule())
+            }
+            .buttonStyle(.plain)
         }
         .padding(16)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
@@ -185,8 +191,8 @@ struct ProfileView: View {
         VStack(spacing: 0) {
 
             // Order history
-            Button {
-                onSeeOrders()
+            NavigationLink {
+                OrdersView(isPushed: true)
             } label: {
                 rowContent(
                     icon: "doc.text",

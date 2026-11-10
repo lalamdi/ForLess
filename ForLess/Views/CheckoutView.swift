@@ -16,15 +16,17 @@ import SwiftUI
 
 struct CheckoutView: View {
 
-    let deal: Deal
     let storeName: String
+    var onLinesChange: (([CartLine]) -> Void)? = nil   // keeps the cart in sync
+    var onPlaced: (() -> Void)? = nil                  // clears the cart after paying
 
     @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.switchTab) private var switchTab
 
     @StateObject private var data = DataStore()
 
-    @State private var quantity: Int
+    @State private var lines: [CartLine]
     @State private var payment: PaymentMethod = .applePay
     @State private var notes = ""
     @State private var isPlacing = false
@@ -35,30 +37,46 @@ struct CheckoutView: View {
         .applePay, .card, .payAtPickup
     ]
 
+    /// One deal ("Buy again" and similar).
     init(
         deal: Deal,
         storeName: String,
         initialQuantity: Int = 1
     ) {
-        self.deal = deal
-        self.storeName = storeName
-
-        _quantity = State(
-            initialValue: min(
-                max(1, initialQuantity),
-                max(1, deal.quantityLeft)
-            )
+        self.init(
+            lines: [CartLine(
+                deal: deal,
+                quantity: min(max(1, initialQuantity), max(1, deal.quantityLeft))
+            )],
+            storeName: storeName
         )
+    }
+
+    /// Several deals (the cart).
+    init(
+        lines: [CartLine],
+        storeName: String,
+        onLinesChange: (([CartLine]) -> Void)? = nil,
+        onPlaced: (() -> Void)? = nil
+    ) {
+        self.storeName = storeName
+        self.onLinesChange = onLinesChange
+        self.onPlaced = onPlaced
+        _lines = State(initialValue: lines)
     }
 
     // MARK: - Price calculations
 
+    private var quantity: Int {
+        lines.reduce(0) { $0 + $1.quantity }
+    }
+
     private var total: Double {
-        deal.dealPrice * Double(quantity)
+        lines.reduce(0) { $0 + $1.deal.dealPrice * Double($1.quantity) }
     }
 
     private var originalTotal: Double {
-        deal.originalPrice * Double(quantity)
+        lines.reduce(0) { $0 + $1.deal.originalPrice * Double($1.quantity) }
     }
 
     private var saving: Double {
@@ -66,7 +84,7 @@ struct CheckoutView: View {
     }
 
     private var soldOut: Bool {
-        deal.quantityLeft < 1
+        lines.isEmpty || lines.contains { $0.deal.quantityLeft < 1 }
     }
 
     // MARK: - Main screen
@@ -133,8 +151,11 @@ struct CheckoutView: View {
         }
         .hideKeyboardOnTap()
         .background(Color.appBackground)
-        .navigationTitle("Checkout")
+        .navigationTitle(onLinesChange == nil ? "Checkout" : "Your cart")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: lines) { _, newLines in
+            onLinesChange?(newLines)
+        }
 
         .safeAreaInset(edge: .bottom) {
             Button {
@@ -166,14 +187,21 @@ struct CheckoutView: View {
             item: $placed,
             onDismiss: {
                 dismiss()
+                switchTab(0)      // "Back to home" goes to the Home tab
+                onPlaced?()
             }
         ) { placed in
-            OrderConfirmationView(
-                orderId: placed.id,
-                order: placed.order,
-                deal: deal,
-                storeName: storeName
-            )
+            // One page: "Order placed!" and the live tracking
+            NavigationStack {
+                OrderTrackingView(
+                    order: placed.trackedOrder,
+                    storeName: storeName,
+                    storeAddress: "",
+                    isNewOrder: true,
+                    savedAmount: placed.saved,
+                    onBackToHome: { self.placed = nil }
+                )
+            }
         }
     }
 
@@ -182,71 +210,10 @@ struct CheckoutView: View {
     private var summaryCard: some View {
         VStack(spacing: 12) {
 
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.brandLight)
-                    .frame(width: 56, height: 56)
-                    .overlay(
-                        Image(systemName: "fork.knife")
-                            .foregroundStyle(Color.brand)
-                    )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(deal.title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.ink)
-
-                    Text(storeName)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.muted)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(qar(deal.dealPrice))
-                        .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(Color.brandText)
-
-                    Text(qar(deal.originalPrice))
-                        .font(.system(size: 12))
-                        .strikethrough()
-                        .foregroundStyle(Color.muted)
-                }
+            ForEach(lines) { item in
+                lineRow(item)
+                Divider()
             }
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Quantity")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.ink)
-
-                    Text("\(deal.quantityLeft) left")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.muted)
-                }
-
-                Spacer()
-
-                HStack(spacing: 14) {
-                    stepButton("minus", enabled: quantity > 1) {
-                        quantity -= 1
-                    }
-
-                    Text("\(quantity)")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(minWidth: 20)
-
-                    stepButton(
-                        "plus",
-                        enabled: quantity < max(1, deal.quantityLeft)
-                    ) {
-                        quantity += 1
-                    }
-                }
-            }
-
-            Divider()
 
             line("Original price", qar(originalTotal))
             line(
@@ -274,6 +241,100 @@ struct CheckoutView: View {
             Color.white,
             in: RoundedRectangle(cornerRadius: 18)
         )
+    }
+
+    // MARK: - One item in the order
+
+    private func lineRow(_ item: CartLine) -> some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.brandLight)
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Image(systemName: item.deal.kind == .grocery ? "basket" : "fork.knife")
+                            .foregroundStyle(Color.brand)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.deal.title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.ink)
+
+                    Text(storeName)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.muted)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(qar(item.deal.dealPrice))
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundStyle(Color.brandText)
+
+                    Text(qar(item.deal.originalPrice))
+                        .font(.system(size: 12))
+                        .strikethrough()
+                        .foregroundStyle(Color.muted)
+                }
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Quantity")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.ink)
+
+                    Text("\(item.deal.quantityLeft) left")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.muted)
+                }
+
+                Spacer()
+
+                // Remove (cart only)
+                if onLinesChange != nil {
+                    Button {
+                        remove(item)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.muted)
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove from cart")
+                }
+
+                HStack(spacing: 14) {
+                    stepButton("minus", enabled: item.quantity > 1) {
+                        changeQuantity(item, by: -1)
+                    }
+
+                    Text("\(item.quantity)")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(minWidth: 20)
+
+                    stepButton(
+                        "plus",
+                        enabled: item.quantity < max(1, item.deal.quantityLeft)
+                    ) {
+                        changeQuantity(item, by: 1)
+                    }
+                }
+            }
+        }
+    }
+
+    private func changeQuantity(_ item: CartLine, by amount: Int) {
+        guard let index = lines.firstIndex(where: { $0.id == item.id }) else { return }
+        lines[index].quantity += amount
+    }
+
+    private func remove(_ item: CartLine) {
+        lines.removeAll { $0.id == item.id }
+        if lines.isEmpty { dismiss() }
     }
 
     // MARK: - Payment options
@@ -383,7 +444,8 @@ struct CheckoutView: View {
         errorMessage = nil
 
         guard let uid = auth.uid,
-              let dealId = deal.id else {
+              let storeId = lines.first?.deal.storeId,
+              !lines.contains(where: { $0.deal.id == nil }) else {
             errorMessage = "Please sign in again."
             return
         }
@@ -397,15 +459,15 @@ struct CheckoutView: View {
         let order = Order(
             id: nil,
             customerId: uid,
-            storeId: deal.storeId,
-            items: [
+            storeId: storeId,
+            items: lines.map { item in
                 OrderItem(
-                    dealId: dealId,
-                    title: deal.title,
-                    quantity: quantity,
-                    price: deal.dealPrice
+                    dealId: item.deal.id ?? "",
+                    title: item.deal.title,
+                    quantity: item.quantity,
+                    price: item.deal.dealPrice
                 )
-            ],
+            },
             total: total,
             paymentMethod: payment,
             status: .new,
@@ -420,14 +482,17 @@ struct CheckoutView: View {
         do {
             let orderId = try data.createOrder(order)
 
-            data.reduceQuantity(
-                dealId: dealId,
-                by: quantity
-            )
+            for item in lines {
+                data.reduceQuantity(
+                    dealId: item.deal.id ?? "",
+                    by: item.quantity
+                )
+            }
 
             placed = PlacedOrder(
                 id: orderId,
-                order: order
+                order: order,
+                saved: saving
             )
 
         } catch {
@@ -443,6 +508,14 @@ struct CheckoutView: View {
 struct PlacedOrder: Identifiable {
     let id: String
     let order: Order
+    let saved: Double      // how much the customer saved on this order
+
+    /// The order with its Firestore id (the tracking screen needs it).
+    var trackedOrder: Order {
+        var tracked = order
+        tracked.id = id
+        return tracked
+    }
 }
 
 func qar(_ amount: Double) -> String {

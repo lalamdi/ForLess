@@ -28,6 +28,8 @@ struct User: Codable, Identifiable {
     var role: UserRole
     var savedLocations: [SavedLocation]
     var foodPreferences: [String]
+    var username: String?          // used to log in (set when the account is created)
+    var photoURL: String?          // profile picture (optional)
 }
 
 // MARK: - Store
