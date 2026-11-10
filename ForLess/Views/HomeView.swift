@@ -9,7 +9,7 @@
 //  Customer home screen
 //  Top: "Pickup near" chip (opens the location pop-up) and the profile circle.
 //  Then the greeting, a search box, the Restaurants / Groceries switch,
-//  "Buy again" from past orders, and the deals list.
+//  the stores near you, and the deals list.
 //  Tapping a store opens its deals page; tapping a deal opens Deal details.
 //
  
@@ -20,7 +20,6 @@ struct HomeView: View {
     @EnvironmentObject private var cart: CartStore
     @StateObject private var data = DataStore()
  
-    @State private var orders: [Order] = []            // this customer's past orders
     @State private var searchText = ""
     @State private var mode: StoreType = .restaurant   // Restaurants or Groceries
  
@@ -66,20 +65,6 @@ struct HomeView: View {
         }
     }
  
-    /// Up to 2 deals the customer ordered before and that are still available.
-    private var buyAgainDeals: [Deal] {
-        var result: [Deal] = []
-        for order in orders {
-            for item in order.items {
-                if let deal = modeDeals.first(where: { $0.id == item.dealId }),
-                   !result.contains(where: { $0.id == deal.id }) {
-                    result.append(deal)
-                }
-            }
-        }
-        return Array(result.prefix(2))
-    }
- 
     /// Stores of the selected type that have at least one deal left.
     private var modeStores: [Store] {
         let storeIdsWithDeals = Set(modeDeals.map { $0.storeId })
@@ -117,11 +102,6 @@ struct HomeView: View {
                             .foregroundStyle(.red)
                     }
  
-                    // Buy again is hidden while searching
-                    if searchText.isEmpty && !buyAgainDeals.isEmpty {
-                        buyAgainSection
-                    }
-
                     // Stores near you (opens the store deals page, Figma 07 / 14)
                     if searchText.isEmpty && !modeStores.isEmpty {
                         storesSection
@@ -176,14 +156,9 @@ struct HomeView: View {
         .id(cart.homeResetID)   // new value = back to the first Home screen
     }
  
-    /// Loads the stores, the deals and this customer's orders.
+    /// Loads the stores and the deals.
     private func reload() async {
-        await data.addSamplePhotos()   // temporary: fills the sample photos
-        await data.fixSampleExpiryDates()   // temporary: new dates for expired samples
         await data.loadAll()
-        if let uid = auth.uid {
-            orders = (try? await data.fetchOrders(customerId: uid)) ?? []
-        }
     }
  
     // MARK: - Pieces of the screen
@@ -280,65 +255,6 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
  
-    // MARK: - Buy again
- 
-    private var buyAgainSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Buy again")
-                    .font(.system(size: 19, weight: .heavy))
-                    .foregroundStyle(Color.ink)
-                Text("From your past orders")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.muted)
-            }
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(buyAgainDeals) { deal in
-                    NavigationLink {
-                        DealDetailView(
-                            deal: deal,
-                            storeName: storeName(for: deal)
-                        )
-                    } label: {
-                        buyAgainCard(deal)
-                    }
-                    .buttonStyle(.plain)
-                }
-                // Keeps a single card at half width
-                if buyAgainDeals.count == 1 {
-                    Color.clear.frame(maxWidth: .infinity)
-                }
-            }
-        }
-    }
- 
-    private func buyAgainCard(_ deal: Deal) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            dealImage(deal)
-                .frame(height: 96)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            Text(deal.title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.ink)
-                .lineLimit(1)
-            Text(storeName(for: deal))
-                .font(.system(size: 12))
-                .foregroundStyle(Color.muted)
-                .lineLimit(1)
-            priceLine(deal)
-            Label("Buy again", systemImage: "arrow.2.squarepath")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.brandText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.brandLight, in: RoundedRectangle(cornerRadius: 10))
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-    }
- 
     // MARK: - Stores near you
 
     private var storesSection: some View {
@@ -368,7 +284,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 6) {
             Group {
                 if let urlString = store.photoURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { image in
+                    CachedAsyncImage(url: url) { image in
                         image.resizable().scaledToFill()
                     } placeholder: {
                         Color.brandLight
@@ -424,7 +340,7 @@ struct HomeView: View {
         return HStack(spacing: 12) {
             Group {
                 if let urlString = store.photoURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { image in
+                    CachedAsyncImage(url: url) { image in
                         image.resizable().scaledToFill()
                     } placeholder: {
                         Color.brandLight
@@ -555,7 +471,7 @@ struct HomeView: View {
     @ViewBuilder
     private func dealImage(_ deal: Deal) -> some View {
         if let urlString = deal.photoURL, let url = URL(string: urlString) {
-            AsyncImage(url: url) { image in
+            CachedAsyncImage(url: url) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
                 Color.brandLight

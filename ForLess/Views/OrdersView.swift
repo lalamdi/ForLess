@@ -8,7 +8,7 @@
 //  Customer "My Orders" screen (Order history).
 //  Shows how many orders the customer made and how much they saved,
 //  filter chips (All, Restaurants, Groceries), and the orders grouped into
-//  "This week" and "Earlier". "Buy again" opens Checkout for the same deal.
+//  "This week" and "Earlier". Tapping an order opens its live tracking.
 //
  
 import SwiftUI
@@ -310,30 +310,6 @@ struct OrdersView: View {
             .buttonStyle(.plain)
 
             Spacer(minLength: 0)
-
-            // Buy again remains a separate action.
-            if let deal,
-               deal.quantityLeft > 0,
-               order.status != .cancelled {
-
-                NavigationLink {
-                    CheckoutView(
-                        deal: deal,
-                        storeName: storeName(of: order)
-                    )
-                } label: {
-                    Label("Buy again", systemImage: "arrow.2.squarepath")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.brandDark)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(
-                            Color.brandLight,
-                            in: RoundedRectangle(cornerRadius: 10)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(12)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 16))

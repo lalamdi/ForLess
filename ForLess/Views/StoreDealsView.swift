@@ -57,7 +57,7 @@ struct StoreDealsView: View {
             Group {
                 if let photoURL = store.photoURL,
                    let url = URL(string: photoURL) {
-                    AsyncImage(url: url) { image in
+                    CachedAsyncImage(url: url) { image in
                         image
                             .resizable()
                             .scaledToFill()
@@ -192,7 +192,7 @@ struct StoreDealsView: View {
             Group {
                 if let photoURL = deal.photoURL,
                    let url = URL(string: photoURL) {
-                    AsyncImage(url: url) { image in
+                    CachedAsyncImage(url: url) { image in
                         image
                             .resizable()
                             .scaledToFill()

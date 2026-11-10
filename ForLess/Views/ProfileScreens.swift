@@ -87,7 +87,6 @@ struct NotificationsView: View {
     // The switches are remembered on this phone
     @AppStorage("notifyNewDeals") private var newDeals = true
     @AppStorage("notifyOrderUpdates") private var orderUpdates = true
-    @AppStorage("notifyBuyAgain") private var buyAgain = false
     @AppStorage("notifyFavorites") private var favorites = true
  
     var body: some View {
@@ -97,8 +96,6 @@ struct NotificationsView: View {
                     toggleRow("New deals near you", "When stores near your location post surplus food", $newDeals)
                     Divider()
                     toggleRow("Order updates", "When your order is confirmed, ready and picked up", $orderUpdates)
-                    Divider()
-                    toggleRow("Buy again reminders", "When a store you ordered from has deals again", $buyAgain)
                     Divider()
                     toggleRow("Favorite stores", "Deals from stores you saved with the heart", $favorites)
                 }

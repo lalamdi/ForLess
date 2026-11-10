@@ -129,8 +129,11 @@ final class DataStore: ObservableObject {
 
     func loadAll() async {
         do {
-            stores = try await fetchStores()
-            deals = try await fetchAllDeals()
+            // Load the stores and the deals at the same time (faster)
+            async let loadedStores = fetchStores()
+            async let loadedDeals = fetchAllDeals()
+            stores = try await loadedStores
+            deals = try await loadedDeals
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
