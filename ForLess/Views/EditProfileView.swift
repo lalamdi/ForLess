@@ -7,7 +7,7 @@
 
 //  Edit profile screen, opened from the Edit button on the Profile tab.
 //  The name and the profile photo can be changed (the small + button).
-//  The phone number and username are shown but locked.
+//  The email and username are shown but locked.
 //  Also has AvatarView: the round picture used here, on Profile and on Home.
 //
 
@@ -33,15 +33,9 @@ struct EditProfileView: View {
         photo != nil || (!removedPhoto && auth.profile?.photoURL != nil)
     }
 
-    /// "+97455990001" becomes "+974 5599 0001".
-    private var phoneText: String {
-        let phone = auth.profile?.phone ?? ""
-        let digits = phone.filter { $0.isNumber }
-        if digits.count == 11 && digits.hasPrefix("974") {
-            let number = Array(digits.dropFirst(3))
-            return "+974 \(String(number[0..<4])) \(String(number[4..<8]))"
-        }
-        return phone
+    /// The email of the account (older accounts may not have one).
+    private var emailText: String {
+        auth.profile?.email ?? ""
     }
 
     var body: some View {
@@ -85,7 +79,9 @@ struct EditProfileView: View {
                 if let username = auth.profile?.username {
                     lockedField(label: "Username", value: username)
                 }
-                lockedField(label: "Mobile number", value: phoneText)
+                if !emailText.isEmpty {
+                    lockedField(label: "Email", value: emailText)
+                }
 
                 if let error = auth.errorMessage {
                     Text(error)

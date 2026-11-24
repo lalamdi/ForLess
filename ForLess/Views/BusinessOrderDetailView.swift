@@ -195,7 +195,7 @@ struct BusinessOrderDetailView: View {
             }
             Spacer()
             // Call button opens the phone app with the customer's number
-            if let phone = model.customerPhone(for: order),
+            if let phone = model.customerPhone(for: order), !phone.isEmpty,
                let url = URL(string: "tel:" + phone.replacingOccurrences(of: " ", with: "")) {
                 Link(destination: url) {
                     Image(systemName: "phone")

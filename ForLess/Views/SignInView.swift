@@ -5,8 +5,8 @@
 //  Created by lama alemadi on 04/11/2026.
 //
 
-//  Log in screen (username + password, Customer or Business)
-//  and the Verify code screen (6-digit SMS code, first time only).
+//  Log in screen (email + password, Customer or Business)
+//  and the Check your email screen (first time only).
 //  New users make their account on the Create account screen.
 //
 
@@ -46,8 +46,8 @@ struct SignInView: View {
 
                     RolePicker(role: $role)
 
-                    LabeledField(label: "Username") {
-                        TextField("Enter your username", text: $username)
+                    LabeledField(label: "Email") {
+                        TextField("Enter your email", text: $username)
                             .textContentType(.username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -78,7 +78,7 @@ struct SignInView: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(auth.isLoading)
 
-                    // First time users make an account with their mobile number
+                    // First time users make an account with their email
                     NavigationLink {
                         CreateAccountView(startingRole: role)
                     } label: {
@@ -164,70 +164,50 @@ struct RolePicker: View {
     }
 }
 
-// MARK: - Verify code screen
+// MARK: - Check your email screen
 
-struct VerifyCodeView: View {
+struct CheckEmailView: View {
     @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
-    @State private var code = ""
-    @FocusState private var focused: Bool   // keeps the keyboard open for typing the code
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
+            Image(systemName: "envelope.badge")
+                .font(.system(size: 40))
+                .foregroundStyle(Color.brand)
+
             VStack(alignment: .leading, spacing: 8) {
-                Text("Verify your number")
+                Text("Check your email")
                     .font(.system(size: 28, weight: .heavy))
                     .foregroundStyle(Color.ink)
-                Text("Enter the 6-digit code we sent to \(auth.phoneNumber)")
+                Text("We sent a link to \(auth.pendingEmail). Tap it to confirm your email, then come back here. If you can't see it, check your spam folder.")
                     .font(.system(size: 15))
                     .foregroundStyle(Color.muted)
             }
-
-            // Six boxes that show the typed digits
-            ZStack {
-                HStack(spacing: 8) {
-                    ForEach(0..<6, id: \.self) { index in
-                        let digit = index < code.count ? String(Array(code)[index]) : ""
-                        let isCurrent = index == code.count && focused   // the next box to fill
-                        Text(digit)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(Color.ink)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 60)
-                            .background(digit.isEmpty ? Color.white : Color.brandLight,
-                                        in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12)
-                                .stroke(isCurrent ? Color.brand : Color.line, lineWidth: isCurrent ? 2 : 1))
-                    }
-                }
-                // Invisible field on top of the boxes that receives the typing
-                TextField("", text: $code)
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)   // lets iOS auto-fill the SMS code
-                    .focused($focused)
-                    .foregroundStyle(.clear)
-                    .tint(.clear)
-                    .frame(height: 60)
-                    .opacity(0.02)
-                    .onChange(of: code) { _, newValue in
-                        // Keep only numbers, maximum 6 digits
-                        let cleaned = String(newValue.filter(\.isNumber).prefix(6))
-                        if cleaned != newValue { code = cleaned }
-                    }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { focused = true }
 
             if let error = auth.errorMessage {
                 Text(error)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.red)
             }
+            if let info = auth.infoMessage {
+                Text(info)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.brandText)
+            }
 
-            // Goes back to the sign-in screen
-            Button("Change mobile number") {
-                auth.errorMessage = nil
-                dismiss()
+            Button("Send the email again") {
+                Task { await auth.resendVerification() }
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.ink)
+
+            // Deletes the unverified account and goes back
+            Button("Use a different email") {
+                Task {
+                    await auth.cancelSignUp()
+                    dismiss()
+                }
             }
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Color.ink)
@@ -235,19 +215,19 @@ struct VerifyCodeView: View {
             Spacer()
 
             Button {
-                Task { await auth.verify(code: code) }
+                Task { await auth.checkVerified() }
             } label: {
-                if auth.isLoading { ProgressView().tint(.white) } else { Text("Verify and create account") }
+                if auth.isLoading { ProgressView().tint(.white) } else { Text("I've verified my email") }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(code.count < 6 || auth.isLoading)   // only active when 6 digits are typed
-            .opacity(code.count < 6 ? 0.5 : 1)
+            .disabled(auth.isLoading)
         }
         .padding(24)
         .background(Color.white)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
-            focused = true
             auth.errorMessage = nil
+            auth.infoMessage = nil
         }
     }
 }

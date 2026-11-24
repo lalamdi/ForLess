@@ -114,7 +114,7 @@ struct StoreDetailsView: View {
         }
         .onAppear {
             // No store phone yet: start with the sign-in number
-            if phone.isEmpty, let signInPhone = auth.profile?.phone {
+            if phone.isEmpty, let signInPhone = auth.profile?.phone, !signInPhone.isEmpty {
                 phone = formatPhone(signInPhone)
             }
         }

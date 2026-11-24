@@ -22,6 +22,7 @@ struct HomeView: View {
  
     @State private var searchText = ""
     @State private var mode: StoreType = .restaurant   // Restaurants or Groceries
+    @State private var category = "All"                // chosen filter chip ("All" = no filter)
  
     @Binding var chosenPlace: LocationOption?        // place confirmed in the pop-up
     @State private var showLocationSheet = false
@@ -49,9 +50,19 @@ struct HomeView: View {
         }
     }
  
+    /// Filter chips for the selected type.
+    private var categories: [String] {
+        mode == .restaurant
+            ? ["All", "Arabic", "Fast food", "Bakery & sweets", "Asian & Indian", "Cafe"]
+            : ["All", "Fruit & veg", "Dairy & eggs", "Pantry", "Organic"]
+    }
+
     /// Deals of the selected type (restaurants or groceries) that are not sold out or expired.
+    /// When a chip is chosen, only deals from stores in that category are kept.
     private var modeDeals: [Deal] {
-        let storeIds = Set(data.stores.filter { $0.type == mode }.compactMap { $0.id })
+        let storeIds = Set(data.stores
+            .filter { $0.type == mode && (category == "All" || $0.category == category) }
+            .compactMap { $0.id })
         return data.deals.filter { storeIds.contains($0.storeId) && $0.quantityLeft > 0 && !$0.isExpired }
     }
  
@@ -95,6 +106,7 @@ struct HomeView: View {
                     greeting
                     searchBox
                     modeSwitch
+                    categoryChips
  
                     if let error = data.errorMessage {
                         Text(error)
@@ -244,6 +256,7 @@ struct HomeView: View {
     private func modeButton(_ title: String, icon: String, value: StoreType) -> some View {
         Button {
             mode = value
+            category = "All"   // each type has its own chips
         } label: {
             Label(title, systemImage: icon)
                 .font(.system(size: 14, weight: .semibold))
@@ -255,6 +268,29 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
  
+    /// Row of category chips under the switch. The chosen one is dark.
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(categories, id: \.self) { name in
+                    let selected = category == name
+                    Button {
+                        category = name
+                    } label: {
+                        Text(name)
+                            .font(.system(size: 13, weight: .semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(selected ? Color.white : Color.ink)
+                            .background(selected ? Color.ink : Color.white, in: Capsule())
+                            .overlay(Capsule().stroke(selected ? Color.clear : Color.line))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     // MARK: - Stores near you
 
     private var storesSection: some View {

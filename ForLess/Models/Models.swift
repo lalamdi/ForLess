@@ -30,6 +30,7 @@ struct User: Codable, Identifiable {
     var foodPreferences: [String]
     var username: String?          // used to log in (set when the account is created)
     var photoURL: String?          // profile picture (optional)
+    var email: String?             // used to sign in and to verify the account
 }
 
 // MARK: - Store
@@ -51,6 +52,7 @@ struct Store: Codable, Identifiable {
     var photoURL: String?
     var ownerId: String?
     var phone: String?          // contact number shown to customers (not the sign-in number)
+    var category: String?       // e.g. "Arabic", "Bakery & sweets", "Dairy & eggs" (used by the Home filter chips)
 }
 
 // MARK: - Deal

@@ -5,9 +5,9 @@
 //  Created by Leen Almeadadi on 10/11/2026.
 //
 
-//  Create account screen (first time only): name, mobile number,
-//  username and password. "Continue" sends the SMS code, and the
-//  Verify code screen finishes the account.
+//  Create account screen (first time only): name, email and password.
+//  "Continue" emails a verification link, and the Check your email
+//  screen finishes the account.
 //
 
 import SwiftUI
@@ -18,10 +18,9 @@ struct CreateAccountView: View {
 
     @State private var role: UserRole
     @State private var name = ""
-    @State private var mobile = ""
-    @State private var username = ""
+    @State private var email = ""
     @State private var password = ""
-    @State private var showVerify = false           // opens the Verify code screen
+    @State private var showCheckEmail = false           // opens the Check your email screen
 
     init(startingRole: UserRole) {
         _role = State(initialValue: startingRole)
@@ -34,7 +33,7 @@ struct CreateAccountView: View {
                     Text("Create your account")
                         .font(.system(size: 28, weight: .heavy))
                         .foregroundStyle(Color.ink)
-                    Text("You only do this once. We'll text a code to check your number.")
+                    Text("You only do this once. We'll email you a link to confirm your address.")
                         .font(.system(size: 15))
                         .foregroundStyle(Color.muted)
                 }
@@ -47,20 +46,10 @@ struct CreateAccountView: View {
                         .textContentType(role == .customer ? UITextContentType.name : .organizationName)
                 }
 
-                // Mobile number field with the fixed Qatar code
-                LabeledField(label: role == .customer ? "Mobile number" : "Business mobile number") {
-                    HStack(spacing: 12) {
-                        Text("+974").font(.system(size: 15, weight: .semibold))
-                        Rectangle().fill(Color.line).frame(width: 1, height: 20)
-                        TextField("5XXX XXXX", text: $mobile)
-                            .keyboardType(.numberPad)
-                            .textContentType(.telephoneNumber)
-                    }
-                }
-
-                LabeledField(label: "Username") {
-                    TextField("Choose a username", text: $username)
-                        .textContentType(.username)
+                LabeledField(label: "Email") {
+                    TextField("Enter your email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 }
@@ -84,10 +73,9 @@ struct CreateAccountView: View {
             VStack(spacing: 12) {
                 Button {
                     Task {
-                        // Go to the Verify screen only if the SMS was sent
-                        if await auth.sendCode(name: name, mobile: mobile, username: username,
-                                               password: password, role: role) {
-                            showVerify = true
+                        // Go to the next screen only if the email was sent
+                        if await auth.signUp(name: name, email: email, password: password, role: role) {
+                            showCheckEmail = true
                         }
                     }
                 } label: {
@@ -115,7 +103,7 @@ struct CreateAccountView: View {
         .background(Color.white)
         .hideKeyboardOnTap()
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(isPresented: $showVerify) { VerifyCodeView() }
+        .navigationDestination(isPresented: $showCheckEmail) { CheckEmailView() }
         .onChange(of: role) { auth.errorMessage = nil }   // clear old errors when switching tabs
         .onAppear { auth.errorMessage = nil }
     }

@@ -106,11 +106,6 @@ struct AddAddressView: View {
                         }
                     }
  
-                    if let message = location.errorMessage ?? errorMessage {
-                        Text(message)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.red)
-                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -134,12 +129,20 @@ struct AddAddressView: View {
             }
             // Save button stays at the bottom of the screen
             .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
+                // Errors show here, next to the button, so they are always visible
+                if let message = location.errorMessage ?? errorMessage {
+                    Text(message)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.red)
+                }
                 Button(isSaving ? "Saving..." : (editing == nil ? "Save address" : "Save changes")) {
                     Task { await save() }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(isSaving)
                 .opacity(isSaving ? 0.6 : 1)
+                }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
                 .background(Color.appBackground)
@@ -266,7 +269,12 @@ struct AddAddressView: View {
         let point = CLLocation(latitude: center.latitude, longitude: center.longitude)
         CLGeocoder().reverseGeocodeLocation(point) { placemarks, _ in
             DispatchQueue.main.async {
-                guard !addressFocused, let place = placemarks?.first else { return }
+                guard !addressFocused else { return }
+                // No address found for this spot (or no internet): still let the customer save the pin
+                guard let place = placemarks?.first else {
+                    addressText = String(format: "Pinned location (%.4f, %.4f)", center.latitude, center.longitude)
+                    return
+                }
                 // Name, area and city, without repeating the same word
                 var parts: [String] = []
                 for part in [place.name, place.subLocality, place.locality] {
@@ -285,10 +293,8 @@ struct AddAddressView: View {
     private func save() async {
         errorMessage = nil
         let trimmed = addressText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            errorMessage = "Enter the address."
-            return
-        }
+        let pinText = String(format: "Pinned location (%.4f, %.4f)", center.latitude, center.longitude)
+        let addressToSave = trimmed.isEmpty ? pinText : trimmed
  
         // "Other" uses the name the customer typed
         var savedLabel = label
@@ -304,7 +310,7 @@ struct AddAddressView: View {
  
         // The floor / apartment is added to the end of the address
         let floor = floorText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fullAddress = floor.isEmpty ? trimmed : "\(trimmed), \(floor)"
+        let fullAddress = floor.isEmpty ? addressToSave : "\(addressToSave), \(floor)"
  
         let newPlace = SavedLocation(label: savedLabel, address: fullAddress,
                                      latitude: center.latitude, longitude: center.longitude)

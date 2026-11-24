@@ -59,6 +59,8 @@ struct ProfileView: View {
 
     /// Formats the Qatar phone number.
     private var phoneText: String {
+        // New accounts sign in with an email, so show it instead of a number
+        if let email = profile?.email, !email.isEmpty { return email }
         let phone = profile?.phone ?? ""
         let digits = phone.filter { $0.isNumber }
 
